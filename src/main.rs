@@ -2,41 +2,59 @@ use bevy::prelude::*;
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins(
+            DefaultPlugins
+                .set(ImagePlugin::default_nearest())    // default_nearest is good for pixle art
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        title: "Snake".into(),
+                        resolution: (640.0, 480.0).into(),
+                        resizable: false,
+                        ..default()
+                    }),
+                    ..default()
+                })
+                .build(),
+        )
         .add_systems(Startup, setup)
-        .add_systems(Update, sprite_movement)
+        .add_systems(Update, character_movement)
         .run();
 }
 
-#[derive(Component)]
-enum Direction {
-    Up,
-    Down,
-}
-
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn((Camera2dBundle::default()));
-    commands.spawn((
+    commands.spawn(Camera2dBundle::default());
+
+    let texture = asset_server.load("baker.png");
+
+    commands.spawn(
         SpriteBundle {
-            texture: asset_server.load("baker.png"),
-            transform: Transform::from_xyz(100., 0., 0.),
+            sprite: Sprite {
+                custom_size: Some(Vec2::new(100., 100.)),
+                ..default()
+            },
+            texture,
             ..default()
-        },
-        Direction::Up,
-    ));
+        }
+    );
 }
 
-fn sprite_movement(time: Res<Time>, mut sprite_position: Query<(&mut Direction, &mut Transform)>) {
-    for (mut logo, mut transform) in &mut sprite_position {
-        match *logo {
-            Direction::Up => transform.translation.y += 150. * time.delta_seconds(),
-            Direction::Down => transform.translation.y -= 150. * time.delta_seconds(),
+fn character_movement(
+    mut characters: Query<(&mut Transform, &Sprite)>,
+    input: Res<ButtonInput<KeyCode>>,
+    time: Res<Time>,
+) {
+    for (mut transform, _) in &mut characters {
+        if input.pressed(KeyCode::KeyW) {
+            transform.translation.y += 100. * time.delta_seconds();
         }
-
-        if transform.translation.y > 200. {
-            *logo = Direction::Down;
-        } else if transform.translation.y < -200. {
-            *logo = Direction::Up;
+        else if input.pressed(KeyCode::KeyS) {
+            transform.translation.y -= 100. * time.delta_seconds();
+        }
+        else if input.pressed(KeyCode::KeyD) {
+            transform.translation.x += 100. * time.delta_seconds();
+        }
+        else if input.pressed(KeyCode::KeyA) {
+            transform.translation.x -= 100. * time.delta_seconds();
         }
     }
 }
