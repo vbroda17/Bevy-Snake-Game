@@ -21,44 +21,64 @@ fn main() {
         .run();
 }
 
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn setup(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
-
-    let texture = asset_server.load("baker.png");
 
     commands.spawn((
         SpriteBundle {
-            texture,
+            sprite: Sprite {
+                color: Color::rgb(0.1, 0.8, 0.0),
+                custom_size: Some(Vec2::new(10., 10.)),
+                ..default()
+            },
             ..default()
         },
-        Player { speed: 100.},
+        Player { 
+            speed: 100.0,
+            last_dir: Some(KeyCode::KeyW),
+        },
     ));
 }
 
 #[derive(Component)]
 pub struct Player {
     pub speed: f32,
+    pub last_dir: Option<KeyCode>,
 }
 
 fn character_movement(
-    mut characters: Query<(&mut Transform, &Player)>,
+    mut characters: Query<(&mut Transform, &mut Player)>,
     input: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
 ) {
-    for (mut transform, player) in &mut characters {
+    for (mut transform, mut player) in &mut characters {
         let movement_amount = player.speed * time.delta_seconds();
 
-        if input.pressed(KeyCode::KeyW) {
-            transform.translation.y += movement_amount;
+        let direction = 
+               if input.pressed(KeyCode::KeyW) {
+            Some(KeyCode::KeyW)
+        } else if input.pressed(KeyCode::KeyS) {
+            Some(KeyCode::KeyS)
+        } else if input.pressed(KeyCode::KeyD) {
+            Some(KeyCode::KeyD)
+        } else if input.pressed(KeyCode::KeyA) {
+            Some(KeyCode::KeyA)
+        } else {
+            None
+        };
+
+        if let Some(dir) = direction {
+            player.last_dir = Some(dir);
         }
-        else if input.pressed(KeyCode::KeyS) {
-            transform.translation.y -= movement_amount;
-        }
-        else if input.pressed(KeyCode::KeyD) {
-            transform.translation.x += movement_amount;
-        }
-        else if input.pressed(KeyCode::KeyA) {
-            transform.translation.x -= movement_amount;
+
+        if let Some(last_dir) = player.last_dir {
+            match last_dir {
+                KeyCode::KeyW => transform.translation.y += movement_amount,
+                KeyCode::KeyS => transform.translation.y -= movement_amount,
+                KeyCode::KeyD => transform.translation.x += movement_amount,
+                KeyCode::KeyA => transform.translation.x -= movement_amount,
+                _ => {} // Handle other keys if necessary
+            }
         }
     }
 }
