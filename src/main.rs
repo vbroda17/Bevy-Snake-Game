@@ -26,35 +26,39 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     let texture = asset_server.load("baker.png");
 
-    commands.spawn(
+    commands.spawn((
         SpriteBundle {
-            sprite: Sprite {
-                custom_size: Some(Vec2::new(100., 100.)),
-                ..default()
-            },
             texture,
             ..default()
-        }
-    );
+        },
+        Player { speed: 100.},
+    ));
+}
+
+#[derive(Component)]
+pub struct Player {
+    pub speed: f32,
 }
 
 fn character_movement(
-    mut characters: Query<(&mut Transform, &Sprite)>,
+    mut characters: Query<(&mut Transform, &Player)>,
     input: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
 ) {
-    for (mut transform, _) in &mut characters {
+    for (mut transform, player) in &mut characters {
+        let movement_amount = player.speed * time.delta_seconds();
+
         if input.pressed(KeyCode::KeyW) {
-            transform.translation.y += 100. * time.delta_seconds();
+            transform.translation.y += movement_amount;
         }
         else if input.pressed(KeyCode::KeyS) {
-            transform.translation.y -= 100. * time.delta_seconds();
+            transform.translation.y -= movement_amount;
         }
         else if input.pressed(KeyCode::KeyD) {
-            transform.translation.x += 100. * time.delta_seconds();
+            transform.translation.x += movement_amount;
         }
         else if input.pressed(KeyCode::KeyA) {
-            transform.translation.x -= 100. * time.delta_seconds();
+            transform.translation.x -= movement_amount;
         }
     }
 }
