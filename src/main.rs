@@ -50,10 +50,13 @@ fn character_movement(
     mut characters: Query<(&mut Transform, &mut Player)>,
     input: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
+    window: Query<&Window>,
 ) {
     for (mut transform, mut player) in &mut characters {
+        // player speed
         let movement_amount = player.speed * time.delta_seconds();
 
+        // getting player input to set direction
         let direction = 
                if input.pressed(KeyCode::KeyW) && player.last_dir != Some(KeyCode::KeyS) {
             Some(KeyCode::KeyW)
@@ -71,6 +74,7 @@ fn character_movement(
             player.last_dir = Some(dir);
         }
 
+        // moving player
         if let Some(last_dir) = player.last_dir {
             match last_dir {
                 KeyCode::KeyW => transform.translation.y += movement_amount,
@@ -80,5 +84,23 @@ fn character_movement(
                 _ => {} // Handle other keys if necessary
             }
         }
+        
+        // restricting player to the screen
+        let window = window.single();
+        let window_width = window.width();
+        let window_height = window.height();
+
+        let mut new_x = transform.translation.x;
+        let mut new_y = transform.translation.y;
+
+        new_x = new_x.max(-window_width / 2. - 5.).min(window_width / 2. - 5.);
+        new_y = new_y.max(-window_height / 2. - 5.).min(window_height / 2. - 5.);
+
+        transform.translation = Vec3::new(new_x, new_y, 0.0);
     }
 }
+
+// #[derive(Component)]
+// pub struct Food {
+//     pub
+// }
