@@ -55,13 +55,13 @@ fn character_movement(
         let movement_amount = player.speed * time.delta_seconds();
 
         let direction = 
-               if input.pressed(KeyCode::KeyW) {
+               if input.pressed(KeyCode::KeyW) && player.last_dir != Some(KeyCode::KeyS) {
             Some(KeyCode::KeyW)
-        } else if input.pressed(KeyCode::KeyS) {
+        } else if input.pressed(KeyCode::KeyS) && player.last_dir != Some(KeyCode::KeyW) {
             Some(KeyCode::KeyS)
-        } else if input.pressed(KeyCode::KeyD) {
+        } else if input.pressed(KeyCode::KeyD) && player.last_dir != Some(KeyCode::KeyA) {
             Some(KeyCode::KeyD)
-        } else if input.pressed(KeyCode::KeyA) {
+        } else if input.pressed(KeyCode::KeyA) && player.last_dir != Some(KeyCode::KeyD) {
             Some(KeyCode::KeyA)
         } else {
             None
