@@ -20,10 +20,11 @@ fn main() {
         .add_systems(Update, character_movement)
         .add_systems(Update, spawn_food)
         .add_systems(Update, food_check)
+        .add_systems(Update, update_snake_segments)
         .run();
 }
 
-fn setup(mut commands: Commands) {
+fn setup(mut commands: Commands, mut player_query: Query<&Player>) {
     commands.spawn(Camera2dBundle::default());
 
     commands.spawn((
@@ -38,26 +39,32 @@ fn setup(mut commands: Commands) {
         Player { 
             speed: 100.0,
             last_dir: Some(KeyCode::KeyW),
+            last_n_directions: vec![KeyCode::KeyW],
         },
     ));
 
-    // for snake expansion
-    commands.spawn((Transform::default(), SnakeSegment));
+
+    let initial_direction_vector = vec![KeyCode::KeyW];
+    commands.spawn((Transform::default(), SnakeSegment {
+        position: Vec2::ZERO, // Set the initial position
+        directions: initial_direction_vector, // Initialize the directions vector
+    }));
 }
 
 #[derive(Component)]
 pub struct Player {
     pub speed: f32,
     pub last_dir: Option<KeyCode>,
+    pub last_n_directions: Vec<KeyCode>,
 }
 
 fn character_movement(
-    mut characters: Query<(&mut Transform, &mut Player)>,
+    mut characters: Query<(&mut Transform, &mut Player, &mut SnakeSegment)>,
     input: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
     window: Query<&Window>,
 ) {
-    for (mut transform, mut player) in &mut characters {
+    for (mut transform, mut player, mut snake_segments) in &mut characters {
         // player speed
         let movement_amount = player.speed * time.delta_seconds();
 
@@ -77,6 +84,8 @@ fn character_movement(
 
         if let Some(dir) = direction {
             player.last_dir = Some(dir);
+
+            snake_segments.directions.push(dir);
         }
 
         // moving player
@@ -89,6 +98,7 @@ fn character_movement(
                 _ => {} // Handle other keys if necessary
             }
         }
+
         
         // restricting player to the screen
         let window = window.single();
@@ -102,8 +112,6 @@ fn character_movement(
         new_y = new_y.max(-window_height / 2. + 5.).min(window_height / 2. - 5.);
 
         transform.translation = Vec3::new(new_x, new_y, 0.0);
-
-
     }
 }
 
@@ -141,11 +149,13 @@ fn spawn_food(
         },
         Food,
     ));
-
 }
 
 #[derive(Component)]
-pub struct SnakeSegment;
+pub struct SnakeSegment {
+    pub position: Vec2,
+    pub directions: Vec<KeyCode>,
+}
 
 fn food_check(
     mut commands: Commands,
@@ -155,7 +165,7 @@ fn food_check(
 ) {
     let snake_segments_vec: Vec<(&Transform, Entity)> = snake_segments.iter_mut().collect();
 
-    for (player_transformation, _) in &mut player_positions {
+    for (player_transformation, player) in &mut player_positions {
         for (food_entity, food_transform) in &mut food_positions {
             let distance = Vec2::new(
                 player_transformation.translation.x - food_transform.translation.x,
@@ -166,6 +176,8 @@ fn food_check(
 
             if distance < collision_distance {
                 commands.entity(food_entity).despawn();
+
+                let last_n_directions: Vec<KeyCode> = player.last_n_directions.clone();
 
                 // adding new snake segment
                 if let Some((mut last_segment_transform, _)) = snake_segments_vec.last() {
@@ -181,10 +193,48 @@ fn food_check(
                             transform: last_segment_transform.clone(),
                             ..default()
                         },
-                        SnakeSegment,
+                        SnakeSegment {
+                            position: Vec2::new(last_segment_transform.translation.x, last_segment_transform.translation.y),
+                            directions: last_n_directions, // or any initial direction
+                        },
                     ));
                 }
             }
         }
     }
 }
+
+const SEGMENT_SIZE: f32 = 10.0;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Direction {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
+
+fn update_snake_segments(
+    mut snake_segments: Query<(&mut SnakeSegment, &mut Transform)>,
+) {
+    for (mut segment, mut transform) in &mut snake_segments.iter_mut() {
+        if let Some(direction) = segment.directions.pop() {
+            // Update the position based on the direction vector
+            let translation = match direction {
+                KeyCode::KeyW => Vec3::new(0.0, SEGMENT_SIZE, 0.0),
+                KeyCode::KeyS => Vec3::new(0.0, -SEGMENT_SIZE, 0.0),
+                KeyCode::KeyA => Vec3::new(-SEGMENT_SIZE, 0.0, 0.0),
+                KeyCode::KeyD => Vec3::new(SEGMENT_SIZE, 0.0, 0.0),
+                _ => {
+                    // Handle other key codes
+                    // For now, just return zero vector
+                    Vec3::ZERO
+                }
+            };
+
+            transform.translation += translation;
+        }
+    }
+}
+
