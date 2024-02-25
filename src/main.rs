@@ -18,6 +18,7 @@ fn main() {
         )
         .add_systems(Startup, setup)
         .add_systems(Update, character_movement)
+        .add_systems(Update, move_snake_segments)
         .add_systems(Update, spawn_food)
         .add_systems(Update, food_check)
         .run();
@@ -38,21 +39,26 @@ fn setup(mut commands: Commands) {
         Player { 
             speed: 100.0,
             last_dir: Some(KeyCode::KeyW),
+            last_directions: vec![Vec2::new(0., -1.)],
+            body_segments: 0.,
         },
     ));
 
     // for snake expansion
-    commands.spawn((Transform::default(), SnakeSegment));
+    commands.spawn((Transform::default(), SnakeSegment { direction_queue: vec![Vec2::new(0., -1.)] }));
 }
 
 #[derive(Component)]
 pub struct Player {
     pub speed: f32,
     pub last_dir: Option<KeyCode>,
+    pub last_directions: Vec<Vec2>,
+    pub body_segments: f32,
 }
 
 fn character_movement(
     mut characters: Query<(&mut Transform, &mut Player)>,
+    mut snake_segments: Query<&mut SnakeSegment>,
     input: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
     window: Query<&Window>,
@@ -103,9 +109,51 @@ fn character_movement(
 
         transform.translation = Vec3::new(new_x, new_y, 0.0);
 
+        player.last_directions.push(Vec2::new(new_x, new_y));
 
+        // adding to all snake segments queue
+        for mut snake_segment in &mut snake_segments {
+            snake_segment.direction_queue.push(Vec2::new(new_x, new_y));
+        }
+
+        if player.last_directions.len() > (10 * (player.body_segments + 1.) as usize) {
+            player.last_directions.pop();
+        }
     }
 }
+
+fn move_snake_segments(mut snake_segments: Query<(&mut Transform, &mut SnakeSegment)>, window: Query<&Window>,) {
+    // for (mut segment_transform, mut segment) in &mut snake_segments {
+    //     if let Some(direction) = segment.direction_queue.pop() {
+    //         // Update segment position based on direction
+    //         segment_transform.translation.x += direction.x;
+    //         segment_transform.translation.y += direction.y;
+    //     }
+    // }
+    let window = window.single();
+    let window_width = window.width();
+    let window_height = window.height();
+
+    for (mut segment_transform, _) in &mut snake_segments {
+        // Increase the y value of each snake segment by 1
+        segment_transform.translation.y += 1.0;
+
+         // Wrap around if the segment hits the bottom border
+         if segment_transform.translation.y < -window_height / 2.0 {
+            segment_transform.translation.y = window_height / 2.0;
+        }
+
+        // Bound segment within the window
+        let mut new_x = segment_transform.translation.x;
+        let mut new_y = segment_transform.translation.y;
+        new_x = new_x.max(-window_width / 2. + 5.).min(window_width / 2. - 5.);
+        new_y = new_y.max(-window_height / 2. + 5.).min(window_height / 2. - 5.);
+
+        // Update segment translation
+        segment_transform.translation = Vec3::new(new_x, new_y, 0.0);
+    }
+}
+
 
 #[derive(Component)]
 pub struct Food;
@@ -145,17 +193,19 @@ fn spawn_food(
 }
 
 #[derive(Component)]
-pub struct SnakeSegment;
+pub struct SnakeSegment{
+    direction_queue: Vec<Vec2>,
+}
 
 fn food_check(
     mut commands: Commands,
     mut food_positions: Query<(Entity, &Transform), With<Food>>,
-    mut player_positions: Query<(&Transform, &Player)>,
+    mut player_positions: Query<(&Transform, &mut Player)>,
     mut snake_segments: Query<(&Transform, Entity), With<SnakeSegment>>,
 ) {
     let snake_segments_vec: Vec<(&Transform, Entity)> = snake_segments.iter_mut().collect();
 
-    for (player_transformation, _) in &mut player_positions {
+    for (player_transformation, mut player) in &mut player_positions {
         for (food_entity, food_transform) in &mut food_positions {
             let distance = Vec2::new(
                 player_transformation.translation.x - food_transform.translation.x,
@@ -166,7 +216,7 @@ fn food_check(
 
             if distance < collision_distance {
                 commands.entity(food_entity).despawn();
-
+                player.body_segments += 1.;
                 // adding new snake segment
                 if let Some((mut last_segment_transform, _)) = snake_segments_vec.last() {
                     let mut last_segment_transform = last_segment_transform.clone();
@@ -181,7 +231,9 @@ fn food_check(
                             transform: last_segment_transform.clone(),
                             ..default()
                         },
-                        SnakeSegment,
+                        SnakeSegment{
+                            direction_queue: player.last_directions.clone(),
+                        },
                     ));
                 }
             }
