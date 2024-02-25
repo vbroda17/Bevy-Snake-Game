@@ -40,6 +40,9 @@ fn setup(mut commands: Commands) {
             last_dir: Some(KeyCode::KeyW),
         },
     ));
+
+    // for snake expansion
+    commands.spawn((Transform::default(), SnakeSegment));
 }
 
 #[derive(Component)]
@@ -99,6 +102,8 @@ fn character_movement(
         new_y = new_y.max(-window_height / 2. + 5.).min(window_height / 2. - 5.);
 
         transform.translation = Vec3::new(new_x, new_y, 0.0);
+
+
     }
 }
 
@@ -139,11 +144,17 @@ fn spawn_food(
 
 }
 
+#[derive(Component)]
+pub struct SnakeSegment;
+
 fn food_check(
     mut commands: Commands,
-    mut food_positions: Query<(Entity, & Transform), With<Food>>,
+    mut food_positions: Query<(Entity, &Transform), With<Food>>,
     mut player_positions: Query<(&Transform, &Player)>,
+    mut snake_segments: Query<(&Transform, Entity), With<SnakeSegment>>,
 ) {
+    let snake_segments_vec: Vec<(&Transform, Entity)> = snake_segments.iter_mut().collect();
+
     for (player_transformation, _) in &mut player_positions {
         for (food_entity, food_transform) in &mut food_positions {
             let distance = Vec2::new(
@@ -155,6 +166,24 @@ fn food_check(
 
             if distance < collision_distance {
                 commands.entity(food_entity).despawn();
+
+                // adding new snake segment
+                if let Some((mut last_segment_transform, _)) = snake_segments_vec.last() {
+                    let mut last_segment_transform = last_segment_transform.clone();
+                    last_segment_transform.translation += Vec3::new(20.0, 0.0, 0.0); // Adjust position of new segment
+                    commands.spawn((
+                        SpriteBundle {
+                            sprite: Sprite {
+                                color: Color::rgb(0.1, 0.8, 0.0),
+                                custom_size: Some(Vec2::new(10., 10.)),
+                                ..default()
+                            },
+                            transform: last_segment_transform.clone(),
+                            ..default()
+                        },
+                        SnakeSegment,
+                    ));
+                }
             }
         }
     }
