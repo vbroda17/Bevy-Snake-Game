@@ -16,8 +16,9 @@ fn main() {
                 })
                 .build(),
         )
-        .add_systems(Startup, setup)
+        .add_systems(Startup, (setup, spawn_food))
         .add_systems(Update, character_movement)
+        .add_systems(Update, food_check)
         .run();
 }
 
@@ -92,15 +93,60 @@ fn character_movement(
 
         let mut new_x = transform.translation.x;
         let mut new_y = transform.translation.y;
-
-        new_x = new_x.max(-window_width / 2. - 5.).min(window_width / 2. - 5.);
-        new_y = new_y.max(-window_height / 2. - 5.).min(window_height / 2. - 5.);
+        // should break this up better, but just know center of screen is 0,0 and player is 10px
+        new_x = new_x.max(-window_width / 2. + 5.).min(window_width / 2. - 5.);
+        new_y = new_y.max(-window_height / 2. + 5.).min(window_height / 2. - 5.);
 
         transform.translation = Vec3::new(new_x, new_y, 0.0);
     }
 }
 
-// #[derive(Component)]
-// pub struct Food {
-//     pub
-// }
+#[derive(Component)]
+pub struct Food;
+
+fn spawn_food(mut commands: Commands, window: Query<&Window>) {
+    let window = window.single();
+    let window_width = window.width();
+    let window_height = window.height();
+
+    let x = (rand::random::<f32>() - 0.5) * window_width;
+    let y = (rand::random::<f32>() - 0.5) * window_height;
+
+    let x = x.max(-window_width / 2. + 5.).min(window_width / 2. - 5.);
+    let y = y.max(-window_height / 2. + 5.).min(window_height / 2. - 5.);
+
+    commands.spawn((
+        SpriteBundle {
+            sprite: Sprite {
+                color: Color::rgb(0.8, 0.1, 0.0),
+                custom_size: Some(Vec2::new(10., 10.)),
+                ..default()
+            },
+            transform: Transform::from_translation(Vec3::new(x, y, 0.)),
+            ..default()
+        },
+        Food,
+    ));
+
+}
+
+fn food_check(
+    mut commands: Commands,
+    mut food_positions: Query<(Entity, & Transform), With<Food>>,
+    mut player_positions: Query<(&Transform, &Player)>,
+) {
+    for (player_transformation, _) in &mut player_positions {
+        for (food_entity, food_transform) in &mut food_positions {
+            let distance = Vec2::new(
+                player_transformation.translation.x - food_transform.translation.x,
+                player_transformation.translation.y - food_transform.translation.y,
+            ).length();
+
+            let collision_distance = 10.;
+
+            if distance < collision_distance {
+                commands.entity(food_entity).despawn();
+            }
+        }
+    }
+}
