@@ -16,8 +16,9 @@ fn main() {
                 })
                 .build(),
         )
-        .add_systems(Startup, (setup, spawn_food))
+        .add_systems(Startup, setup)
         .add_systems(Update, character_movement)
+        .add_systems(Update, spawn_food)
         .add_systems(Update, food_check)
         .run();
 }
@@ -104,7 +105,15 @@ fn character_movement(
 #[derive(Component)]
 pub struct Food;
 
-fn spawn_food(mut commands: Commands, window: Query<&Window>) {
+fn spawn_food(
+    mut commands: Commands, 
+    window: Query<&Window>,
+    query: Query<&Transform, With<Food>>
+) {
+    if !(query.iter().next().is_none()) {
+        return;
+    }
+
     let window = window.single();
     let window_width = window.width();
     let window_height = window.height();
