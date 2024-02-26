@@ -166,7 +166,26 @@ fn move_snake(
     }
 
     for (mut body_transformation, mut body) in &mut body_query {
-        body_transformation.translation.y += 100. * time.delta_seconds();
+        // body_transformation.translation.y += 100. * time.delta_seconds();
+        match body.direction {
+            Direction::Up => {
+                body_transformation.translation.y += 100. * time.delta_seconds();
+                // println!("Going Up")
+            },
+            Direction::Down => {
+                body_transformation.translation.y -= 100. * time.delta_seconds();
+                // println!("Going Down ")
+            },
+            Direction::Right => {
+                body_transformation.translation.x += 100. * time.delta_seconds();
+                // println!("Going Right")
+            },
+            Direction::Left => {
+                body_transformation.translation.x -= 100. * time.delta_seconds();
+                // println!("Going Left")
+            },
+            _ => {}
+        }
     }
 }
 
@@ -179,6 +198,7 @@ fn add_snake_segement(
     // mut snake_position: Query<&mut Transform, 
     input: Res<ButtonInput<KeyCode>>,
 ){
+    // temporary for testing
     if !input.pressed(KeyCode::Space) {
         return;
     }
@@ -189,9 +209,19 @@ fn add_snake_segement(
     let snake_color = Color::rgb(0.1, 0.8, 0.5);
     let snake_size = Some(Vec2::new(10., 10.));
 
-    if body_query.is_empty() {
-        println!("Testing here");
-        if let Ok((mut transform, mut head)) = head_query.get_single_mut() {
+    // if body_query.is_empty() {
+        println!("Testing First body here");
+
+        if let Ok((mut head_transform, mut head)) = head_query.get_single_mut() {
+            let head_position = head_transform.translation.xy();
+            let head_direction = head.direction.clone();
+            let new_segment_position = match head_direction {
+                Direction::Up => head_position + Vec2::new(0.0, -20.0), // Adjust based on segment size
+                Direction::Down => head_position + Vec2::new(0.0, 20.0),
+                Direction::Left => head_position + Vec2::new(20.0, 0.0),
+                Direction::Right => head_position + Vec2::new(-20.0, 0.0),
+            };
+
             commands.spawn((
                 SpriteBundle {
                     sprite: Sprite {
@@ -200,7 +230,7 @@ fn add_snake_segement(
                         ..default()
                     },
                     transform: Transform {
-                        translation: Vec3::new(0.0, 0.0, 0.0),
+                        translation: Vec3::new(new_segment_position.x, new_segment_position.y, 0.0),
                         scale: Vec3::new(1.0, 1.0, 1.0),
                         ..default()
                     },
@@ -214,7 +244,7 @@ fn add_snake_segement(
 
             head.score += 1;
         }
-    }
+    // }
 }
 
 
