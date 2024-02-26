@@ -47,6 +47,7 @@ pub struct SnakeHead {
     pub previous_directions: Vec<Direction>,
     pub score: u32,
     pub speed: u32,
+    pub size: f32,
 }
 
 #[derive(Component)]
@@ -63,6 +64,7 @@ fn setup(mut commands: Commands) {
     let snake_size = Some(Vec2::new(10., 10.));
     let snake_speed = 100;
     let snake_color = Color::rgb(0.1, 0.8, 0.0);
+    let size = 10.;
 
     commands.spawn((
         SpriteBundle {
@@ -83,6 +85,7 @@ fn setup(mut commands: Commands) {
             previous_directions: Vec::new(),
             score: 0,
             speed: snake_speed,
+            size: size,
         },
     ));
 }
@@ -208,18 +211,19 @@ fn add_snake_segement(
     // }
     let snake_color = Color::rgb(0.1, 0.8, 0.5);
     let snake_size = Some(Vec2::new(10., 10.));
-
-    // if body_query.is_empty() {
+    let size = 10.;
+    if body_query.is_empty() {
         println!("Testing First body here");
 
         if let Ok((mut head_transform, mut head)) = head_query.get_single_mut() {
             let head_position = head_transform.translation.xy();
             let head_direction = head.direction.clone();
+            // let size = head.size.clone();
             let new_segment_position = match head_direction {
-                Direction::Up => head_position + Vec2::new(0.0, -20.0), // Adjust based on segment size
-                Direction::Down => head_position + Vec2::new(0.0, 20.0),
-                Direction::Left => head_position + Vec2::new(20.0, 0.0),
-                Direction::Right => head_position + Vec2::new(-20.0, 0.0),
+                Direction::Up => head_position + Vec2::new(0.0, -size), // Adjust based on segment size
+                Direction::Down => head_position + Vec2::new(0.0, size),
+                Direction::Left => head_position + Vec2::new(size, 0.0),
+                Direction::Right => head_position + Vec2::new(-size, 0.0),
             };
 
             commands.spawn((
@@ -244,7 +248,41 @@ fn add_snake_segement(
 
             head.score += 1;
         }
-    // }
+    } else {
+        // now doing it for all the rest of the body, where it tails off
+        if let Some((mut last_body_transform, mut last_body)) = body_query.iter_mut().last() {
+            if let Ok((mut head_transform, mut head)) = head_query.get_single_mut() {
+                let last_body_position = last_body_transform.translation.xy();
+                let last_body_direction = last_body.direction.clone();
+                let new_segment_position = match last_body_direction {
+                    Direction::Up => last_body_position - Vec2::new(0.0, size), // Adjust based on segment size
+                    Direction::Down => last_body_position + Vec2::new(0.0, size),
+                    Direction::Left => last_body_position + Vec2::new(size, 0.0),
+                    Direction::Right => last_body_position - Vec2::new(size, 0.0),
+                };
+
+                commands.spawn((
+                    SpriteBundle {
+                        sprite: Sprite {
+                            color: snake_color,
+                            custom_size: snake_size,
+                            ..Default::default()
+                        },
+                        transform: Transform {
+                            translation: Vec3::new(new_segment_position.x, new_segment_position.y, 0.0),
+                            scale: Vec3::new(1.0, 1.0, 1.0),
+                            ..Default::default()
+                        },
+                    ..Default::default()
+                    },
+                    SnakeBody {
+                        direction: last_body.direction.clone(),
+                        next_directions: head.previous_directions.clone()
+                    },
+                ));
+            }
+        }
+    }
 }
 
 
