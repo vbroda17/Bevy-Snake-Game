@@ -64,14 +64,6 @@ fn setup(mut commands: Commands) {
     let snake_speed = 100;
     let snake_color = Color::rgb(0.1, 0.8, 0.0);
 
-    // let snake = commands.spawn(
-    //     Snake {
-    //         speed: snake_speed,
-    //         score: 0,
-    //         size: 10,
-    //     }
-    // ).id();
-
     commands.spawn((
         SpriteBundle {
             sprite: Sprite {
@@ -93,26 +85,6 @@ fn setup(mut commands: Commands) {
             speed: snake_speed,
         },
     ));
-
-    // commands.spawn((
-    //     SnakeHead {
-    //         // visual: snake_head_visual,
-    //         direction: Direction::Up,
-    //         previous_directions: Vec::new(),
-    //         score: 0,
-    //         speed: snake_speed,
-    //     },
-    //     Sprite {
-    //         color: snake_color,
-    //         custom_size: snake_size,
-    //         ..default()
-    //     },
-    //     Transform {
-    //         translation: Vec3::new(0.0, 0.0, 0.0),
-    //         scale: Vec3::new(1.0, 1.0, 1.0),
-    //         ..default()
-    //     },
-    // ));
 }
 
 fn update_direction(
@@ -125,19 +97,19 @@ fn update_direction(
         let previous_direction = head.direction.clone();
         
         let new_direction = 
-            if input.pressed(KeyCode::KeyW) && previous_direction != Direction::Up {
+            if input.pressed(KeyCode::KeyW) && previous_direction != Direction::Down {
                 println!("Now Going Up");
                 Direction::Up
             } 
-            else if input.pressed(KeyCode::KeyS) && previous_direction != Direction::Down {
+            else if input.pressed(KeyCode::KeyS) && previous_direction != Direction::Up {
                 println!("Now Going Down");
                 Direction::Down
             }
-            else if input.pressed(KeyCode::KeyA) && previous_direction != Direction::Left {
+            else if input.pressed(KeyCode::KeyA) && previous_direction != Direction::Right {
                 println!("Now Going Left");
                 Direction::Left
             }
-            else if input.pressed(KeyCode::KeyD) && previous_direction != Direction::Right {
+            else if input.pressed(KeyCode::KeyD) && previous_direction != Direction::Left {
                 println!("Now Going Right");
                 Direction::Right
             }
@@ -146,7 +118,7 @@ fn update_direction(
             };
 
         head.direction = new_direction.clone();
-        head.previous_directions.push(previous_direction.clone());
+        head.previous_directions.push(new_direction.clone());
         if head.previous_directions.len() >= (head.speed * (head.score + 1)) as usize {
             head.previous_directions.pop();
             // println!("DId a pop");
@@ -160,13 +132,31 @@ fn update_direction(
 }
 
 fn move_snake(
-    mut head_query: Query<&mut Transform, With<SnakeHead>>,
+    mut head_query: Query<(&mut Transform, &SnakeHead), With<SnakeHead>>,
     window: Query<&Window>,
     time: Res<Time>,
 ) {
-    if let Ok(mut transform) = head_query.get_single_mut() {
-        transform.translation.y += 10. * time.delta_seconds();
-    }
+    if let Ok((mut transform, head)) = head_query.get_single_mut() {
+        match head.direction {
+            Direction::Up => {
+                transform.translation.y += 100. * time.delta_seconds();
+                // println!("Going Up")
+            },
+            Direction::Down => {
+                transform.translation.y -= 100. * time.delta_seconds();
+                // println!("Going Down ")
+            },
+            Direction::Right => {
+                transform.translation.x += 100. * time.delta_seconds();
+                // println!("Going Right")
+            },
+            Direction::Left => {
+                transform.translation.x -= 100. * time.delta_seconds();
+                // println!("Going Left")
+            },
+            _ => {}
+        }
+}
 
     // for (mut snake_head, mut transform) in &mut query {
     //     // Update snake head position based on direction and time
