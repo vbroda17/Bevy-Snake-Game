@@ -19,7 +19,7 @@ fn main() {
         .add_systems(Startup, setup)
         .add_systems(Update, update_direction)
         .add_systems(Update, move_snake)
-        // .add_systems(Update, move_snake_segments)
+        .add_systems(Update, add_snake_segement)
         // .add_systems(Update, spawn_food)
         // .add_systems(Update, food_check)
         .run();
@@ -51,8 +51,8 @@ pub struct SnakeHead {
 
 #[derive(Component)]
 pub struct SnakeBody {
-    pub visual: Entity,
-    pub index: u32,
+    // pub visual: Entity,
+    // pub index: u32,
     pub direction: Direction,
     pub next_directions: Vec<Direction>,
 }
@@ -156,44 +156,77 @@ fn move_snake(
             },
             _ => {}
         }
+        let window = window.single();
+        let window_width = window.width();
+        let window_height = window.height();
+        let new_x = transform.translation.x.max(-window_width / 2. + 5.).min(window_width / 2. - 5.);
+        let new_y = transform.translation.y.max(-window_height / 2. + 5.).min(window_height / 2. - 5.);
+        transform.translation = Vec3::new(new_x, new_y, 0.0);
+    }
 }
 
-    // for (mut snake_head, mut transform) in &mut query {
-    //     // Update snake head position based on direction and time
-    //     match snake_head.direction {
-    //         Direction::Up => {
-    //             transform.translation.y += 100. * time.delta_seconds();
-    //             println!("Going Up")
-    //         },
-    //         Direction::Down => {
-    //             transform.translation.y -= 100. * time.delta_seconds();
-    //             println!("Going Down ")
-    //         },
-    //         Direction::Right => {
-    //             transform.translation.x += 100. * time.delta_seconds();
-    //             println!("Going Right")
-    //         },
-    //         Direction::Left => {
-    //             transform.translation.x -= 100. * time.delta_seconds();
-    //             println!("Going Left")
-    //         },
-    //         _ => {}
-    //     }
 
-    //     // Adjust position to stay within window bounds
-    //     let window = window.single();
-    //     let window_width = window.width();
-    //     let window_height = window.height();
-    //     let new_x = transform.translation.x.max(-window_width / 2. + 5.).min(window_width / 2. - 5.);
-    //     let new_y = transform.translation.y.max(-window_height / 2. + 5.).min(window_height / 2. - 5.);
-    //     transform.translation = Vec3::new(new_x, new_y, 0.0);
+fn add_snake_segement(
+    mut commands: Commands,
+    mut head_query: Query<(&mut Transform, &mut SnakeHead), With<SnakeHead>>,
+    mut body_query: Query<(&mut Transform, &SnakeBody), Without<SnakeHead>>,
+    // mut snake: Query<&mut Snake>,
+    // mut snake_position: Query<&mut Transform, 
+){
+    // going to set some variables
+    // if let Ok((mut transform, head)) = head_query.get_single_mut() {
+        
     // }
+    let snake_color = Color::rgb(0.1, 0.8, 0.5);
+    let snake_size = Some(Vec2::new(10., 10.));
+
+    if body_query.is_empty() {
+        println!("Testing here");
+        if let Ok((mut transform, mut head)) = head_query.get_single_mut() {
+            commands.spawn((
+                SpriteBundle {
+                    sprite: Sprite {
+                        color: snake_color,
+                        custom_size: snake_size,
+                        ..default()
+                    },
+                    transform: Transform {
+                        translation: Vec3::new(0.0, 0.0, 0.0),
+                        scale: Vec3::new(1.0, 1.0, 1.0),
+                        ..default()
+                    },
+                ..default()
+                },
+                SnakeBody {
+                    direction: head.direction.clone(),
+                    next_directions: head.previous_directions.clone()
+                },
+            ));
+
+            head.score += 1;
+        }
+    }
 }
 
 
-// fn add_snake_segement(
-//     // mut snake: Query<&mut Snake>,
-//     // mut snake_position: Query<&mut Transform, 
-// ){
-
-// }
+// commands.spawn((
+//     SpriteBundle {
+//         sprite: Sprite {
+//             color: snake_color,
+//             custom_size: snake_size,
+//             ..default()
+//         },
+//         transform: Transform {
+//             translation: Vec3::new(0.0, 0.0, 0.0),
+//             scale: Vec3::new(1.0, 1.0, 1.0),
+//             ..default()
+//         },
+//         ..default()
+//     },
+//     SnakeHead {
+//         direction: Direction::Up,
+//         previous_directions: Vec::new(),
+//         score: 0,
+//         speed: snake_speed,
+//     },
+// ));
