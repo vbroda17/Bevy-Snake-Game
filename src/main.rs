@@ -133,6 +133,7 @@ fn update_direction(
 
 fn move_snake(
     mut head_query: Query<(&mut Transform, &SnakeHead), With<SnakeHead>>,
+    mut body_query: Query<(&mut Transform, &SnakeBody), Without<SnakeHead>>,
     window: Query<&Window>,
     time: Res<Time>,
 ) {
@@ -163,6 +164,10 @@ fn move_snake(
         let new_y = transform.translation.y.max(-window_height / 2. + 5.).min(window_height / 2. - 5.);
         transform.translation = Vec3::new(new_x, new_y, 0.0);
     }
+
+    for (mut body_transformation, mut body) in &mut body_query {
+        body_transformation.translation.y += 100. * time.delta_seconds();
+    }
 }
 
 
@@ -172,7 +177,11 @@ fn add_snake_segement(
     mut body_query: Query<(&mut Transform, &SnakeBody), Without<SnakeHead>>,
     // mut snake: Query<&mut Snake>,
     // mut snake_position: Query<&mut Transform, 
+    input: Res<ButtonInput<KeyCode>>,
 ){
+    if !input.pressed(KeyCode::Space) {
+        return;
+    }
     // going to set some variables
     // if let Ok((mut transform, head)) = head_query.get_single_mut() {
         
