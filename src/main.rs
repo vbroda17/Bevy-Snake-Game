@@ -46,6 +46,7 @@ pub struct SnakeHead {
 pub struct SnakeBody {
     pub direction: Direction,
     pub next_directions: Vec<Direction>,
+    pub index: u32,
 }
 
 fn setup(mut commands: Commands) {
@@ -112,10 +113,11 @@ fn update_direction(
 
         head.direction = new_direction.clone();
         head.previous_directions.push(new_direction.clone());
-        if head.previous_directions.len() >= (head.speed * (head.score + 1)) as usize {
+        if head.previous_directions.len() >= (head.size as u32* (head.score + 1)) as usize{
             head.previous_directions.pop();
             // println!("DId a pop");
         }
+        else { println!("{}", head.previous_directions.len()); }
 
         // Now add the snake body parts with new informaion
         for mut body in snake_body.iter_mut() {
@@ -236,7 +238,8 @@ fn add_snake_segement(
                 },
                 SnakeBody {
                     direction: head.direction.clone(),
-                    next_directions: head.previous_directions.clone()
+                    next_directions: head.previous_directions.clone(),
+                    index: 1
                 },
             ));
 
@@ -244,7 +247,6 @@ fn add_snake_segement(
         }
     } else {
         // now doing it for all the rest of the body, where it tails off
-        return;
         if let Some((mut last_body_transform, mut last_body)) = body_query.iter_mut().last() {
             if let Ok((mut head_transform, mut head)) = head_query.get_single_mut() {
                 let last_body_position = last_body_transform.translation.xy();
@@ -255,6 +257,7 @@ fn add_snake_segement(
                     Direction::Left => last_body_position + Vec2::new(size, 0.0),
                     Direction::Right => last_body_position - Vec2::new(-size, 0.0),
                 };
+                let new_index = last_body.index + 1;
 
                 commands.spawn((
                     SpriteBundle {
@@ -272,7 +275,8 @@ fn add_snake_segement(
                     },
                     SnakeBody {
                         direction: last_body.direction.clone(),
-                        next_directions: head.previous_directions.clone()
+                        next_directions: head.previous_directions.clone(),
+                        index: new_index
                     },
                 ));
             }
