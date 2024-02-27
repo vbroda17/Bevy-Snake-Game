@@ -33,16 +33,8 @@ pub enum Direction{
     Right,
 }
 
-// #[derive(Component)]
-// pub struct Snake {
-//     pub speed: u32,
-//     pub score: u32,
-//     pub size: u32,
-// }
-
 #[derive(Component)]
 pub struct SnakeHead {
-    // pub visual: Entity,
     pub direction: Direction,
     pub previous_directions: Vec<Direction>,
     pub score: u32,
@@ -52,8 +44,6 @@ pub struct SnakeHead {
 
 #[derive(Component)]
 pub struct SnakeBody {
-    // pub visual: Entity,
-    // pub index: u32,
     pub direction: Direction,
     pub next_directions: Vec<Direction>,
 }
@@ -93,7 +83,7 @@ fn setup(mut commands: Commands) {
 fn update_direction(
     // mut commands: Commands,
     mut snake_head: Query<&mut SnakeHead>,
-    // mut snake_body: Query<&mut SnakeBody>,
+    mut snake_body: Query<&mut SnakeBody>,
     input: Res<ButtonInput<KeyCode>>,
 ){
     for mut head in snake_head.iter_mut() {
@@ -126,12 +116,16 @@ fn update_direction(
             head.previous_directions.pop();
             // println!("DId a pop");
         }
-    }
 
-    // Now the snake body part
-    // for mut body in snake_body.iter_mut() {
-    //     // let mut 
-    // }
+        // Now add the snake body parts with new informaion
+        for mut body in snake_body.iter_mut() {
+            let body_previous_direction = body.direction.clone();
+            let body_new_direction = body.next_directions.pop();
+
+            body.next_directions.push(new_direction.clone());
+            body.direction = body_new_direction.expect("REASON");
+        }
+    }
 }
 
 fn move_snake(
@@ -211,7 +205,7 @@ fn add_snake_segement(
     // }
     let snake_color = Color::rgb(0.1, 0.8, 0.5);
     let snake_size = Some(Vec2::new(10., 10.));
-    let size = 10.;
+    let size = 11.;
     if body_query.is_empty() {
         println!("Testing First body here");
 
@@ -250,15 +244,16 @@ fn add_snake_segement(
         }
     } else {
         // now doing it for all the rest of the body, where it tails off
+        return;
         if let Some((mut last_body_transform, mut last_body)) = body_query.iter_mut().last() {
             if let Ok((mut head_transform, mut head)) = head_query.get_single_mut() {
                 let last_body_position = last_body_transform.translation.xy();
                 let last_body_direction = last_body.direction.clone();
                 let new_segment_position = match last_body_direction {
-                    Direction::Up => last_body_position - Vec2::new(0.0, size), // Adjust based on segment size
+                    Direction::Up => last_body_position - Vec2::new(0.0, -size), // Adjust based on segment size
                     Direction::Down => last_body_position + Vec2::new(0.0, size),
                     Direction::Left => last_body_position + Vec2::new(size, 0.0),
-                    Direction::Right => last_body_position - Vec2::new(size, 0.0),
+                    Direction::Right => last_body_position - Vec2::new(-size, 0.0),
                 };
 
                 commands.spawn((
@@ -285,25 +280,3 @@ fn add_snake_segement(
     }
 }
 
-
-// commands.spawn((
-//     SpriteBundle {
-//         sprite: Sprite {
-//             color: snake_color,
-//             custom_size: snake_size,
-//             ..default()
-//         },
-//         transform: Transform {
-//             translation: Vec3::new(0.0, 0.0, 0.0),
-//             scale: Vec3::new(1.0, 1.0, 1.0),
-//             ..default()
-//         },
-//         ..default()
-//     },
-//     SnakeHead {
-//         direction: Direction::Up,
-//         previous_directions: Vec::new(),
-//         score: 0,
-//         speed: snake_speed,
-//     },
-// ));
