@@ -21,6 +21,7 @@ fn main() {
         )
         .add_systems(Startup, setup)
         .add_systems(Update, spawn_snake_body)
+        .add_systems(Update, update_snake_component_direction)
         .run();
 }
 
@@ -97,6 +98,7 @@ fn spawn_snake_segment(
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<ColorMaterial>>,
     location: Vec3,
+    new_direction: Direction,
     new_index: u32
 )
 {
@@ -117,7 +119,7 @@ fn spawn_snake_segment(
             ..default()
         },
         SnakeSegment {
-            direction: Direction::Up,
+            direction: new_direction,
             direction_queue: VecDeque::new(),
             segement_index: new_index
         },
@@ -138,20 +140,59 @@ fn spawn_snake_body(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     input: Res<ButtonInput<KeyCode>>,
-    query: Query<(&Transform, &SnakeSegment), With<SnakeSegment>>,
+    snake_segment_query: Query<(&Transform, &SnakeSegment), With<SnakeSegment>>,
     mut snake_head_query: Query<&mut SnakeHead>,
 ) {
     if input.just_pressed(KeyCode::Space) {
-        if let Some(mut snake_head) = snake_head_query.iter_mut().next() {
-            let segement_count = snake_head.segement_count;
+        let mut snake_head = snake_head_query.single_mut();
+        let segement_count = snake_head.segement_count;
 
-            for (transform, segement) in query.iter() {
-                if segement.segement_index == segement_count {
-                    let offset = spawn_offset(segement.direction) + transform.translation;
-                    spawn_snake_segment(&mut commands, &mut meshes, &mut materials, offset, segement_count + 1);
-                    snake_head.segement_count += 1;
-                }
+        for (transform, segement) in snake_segment_query.iter() {
+            if segement.segement_index == segement_count {
+                let offset = spawn_offset(segement.direction) + transform.translation;
+                spawn_snake_segment(&mut commands, &mut meshes, &mut materials, offset, segement.direction, segement_count + 1);
+                snake_head.segement_count += 1;
             }
         }
+
     }
+}
+
+fn update_snake_component_direction(
+    input: Res<ButtonInput<KeyCode>>,
+    mut snake_head_query: Query<&mut SnakeSegment, With<SnakeHead>>,
+    snake_segment_query: Query<&mut SnakeSegment, Without<SnakeHead>>
+){
+   let new_direction = update_snake_head_direction(input, snake_head_query);
+}
+
+fn update_snake_head_direction(
+    input: Res<ButtonInput<KeyCode>>,
+    mut snake_head_query: Query<&mut SnakeSegment, With<SnakeHead>>,
+) ->Direction {
+    let mut snake_head = snake_head_query.single_mut();
+    let previous_direction = snake_head.direction;
+    let new_direction = 
+        if input.pressed(KeyCode::KeyW) && previous_direction != Direction::Down && previous_direction != Direction::Up{
+            println!("Now Going Up");
+            Direction::Up
+        } 
+        else if input.pressed(KeyCode::KeyS) && previous_direction != Direction::Up && previous_direction != Direction::Down{
+            println!("Now Going Down");
+            Direction::Down
+        }
+        else if input.pressed(KeyCode::KeyA) && previous_direction != Direction::Right && previous_direction != Direction::Left{
+            println!("Now Going Left");
+            Direction::Left
+        }
+        else if input.pressed(KeyCode::KeyD) && previous_direction != Direction::Left && previous_direction != Direction::Right{
+            println!("Now Going Right");
+            Direction::Right
+        }
+        else {
+            previous_direction.clone()
+        };
+    
+    (*snake_head).direction = new_direction;
+    new_direction
 }
