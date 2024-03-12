@@ -125,7 +125,7 @@ fn spawn_snake_segment(
         },
         SnakeSegment {
             direction: new_direction,
-            direction_queue: VecDeque::new(),
+            direction_queue: new_queue,
             segement_index: new_index
         },
     ));
@@ -153,6 +153,7 @@ fn spawn_snake_body(
         let segement_count = snake_head.segement_count;
 
         for (transform, segement) in snake_segment_query.iter() {
+            // println!("Segment index: {}", segement.segement_index); // test to prove it looks at them in order
             if segement.segement_index == segement_count {
                 let offset = spawn_offset(segement.direction) + transform.translation;
                 let segement_queue = segement.direction_queue.clone();
@@ -226,26 +227,38 @@ fn update_snake_non_head_direction(
 
 fn move_snake(
     time: Res<Time>,
-    mut snake_query: Query<(&mut SnakeSegment, &mut Transform)>
+    window: Query<&Window>,
+    mut snake_head_query: Query<(&mut SnakeSegment, &mut Transform), With<SnakeHead>>,
+    mut snake_segment_query: Query<(&mut SnakeSegment, &mut Transform), Without<SnakeHead>>
 ){
-    for (mut segement, mut transform) in &mut snake_query {
-        match segement.direction {
-            Direction::Up => {
-                transform.translation.y += 100. * time.delta_seconds();
-                // println!("Going Up")
-            },
-            Direction::Down => {
-                transform.translation.y -= 100. * time.delta_seconds();
-                // println!("Going Down ")
-            },
-            Direction::Right => {
-                transform.translation.x += 100. * time.delta_seconds();
-                // println!("Going Right")
-            },
-            Direction::Left => {
-                transform.translation.x -= 100. * time.delta_seconds();
-                // println!("Going Left")
-            }
-        }
+    let (mut head_segment, mut head_transform) = snake_head_query.single_mut();
+    let mut new_head_translation = head_transform.translation.clone();
+
+    match head_segment.direction {
+        Direction::Up => new_head_translation.y += 100. * time.delta_seconds(),
+        Direction::Down => new_head_translation.y -= 100. * time.delta_seconds(),
+        Direction::Right => new_head_translation.x += 100. * time.delta_seconds(),
+        Direction::Left => new_head_translation.x -= 100. * time.delta_seconds(),
+    }
+
+    let window = window.single();
+    let window_width = window.width();
+    let window_height = window.height();
+    new_head_translation.x = new_head_translation.x.max(-window_width / 2. + 5.).min(window_width / 2. - 5.);
+    new_head_translation.y = new_head_translation.y.max(-window_height / 2. + 5.).min(window_height / 2. - 5.);
+
+    head_transform.translation = new_head_translation;
+
+    let mut previous_translation = new_head_translation.clone();
+    for (mut segment, mut transform) in &mut snake_segment_query {
+        let mut new_segment_translation = previous_translation.clone();
+        // match segement.direction {
+        //     Direction::Up => new_segment_translation.y += 100. * time.delta_seconds(),
+        //     Direction::Down => new_segment_translation.y -= 100. * time.delta_seconds(),
+        //     Direction::Right => new_segment_translation.x += 100. * time.delta_seconds(),
+        //     Direction::Left => new_segment_translation.x -= 100. * time.delta_seconds(),
+        // }
+        transform.translation = new_segment_translation + spawn_offset(segment.direction);
+        previous_translation = transform.translation.clone();
     }
 }
