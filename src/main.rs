@@ -99,7 +99,8 @@ fn spawn_snake_segment(
     materials: &mut ResMut<Assets<ColorMaterial>>,
     location: Vec3,
     new_direction: Direction,
-    new_index: u32
+    new_index: u32,
+    old_queue: VecDeque<Direction>
 )
 {
     let mesh = Mesh::from(Rectangle::new(10., 10.));
@@ -107,6 +108,9 @@ fn spawn_snake_segment(
 
     let mesh_handle = meshes.add(mesh);
     let material_handle = materials.add(material);
+
+    let mut new_queue = old_queue.clone();
+    new_queue.extend(std::iter::repeat(new_direction).take(10));
 
     commands.spawn((
         MaterialMesh2dBundle {
@@ -130,8 +134,8 @@ fn spawn_offset(direction: Direction) -> Vec3 {
     match direction {
         Direction::Up => Vec3 { x: 0.0, y: -10.0, z: 0.5 },
         Direction::Down => Vec3 { x: 0.0, y: 10.0, z: 0.5 },
-        Direction::Left => Vec3 { x: -10.0, y: 0.0, z: 0.5 },
-        Direction::Right => Vec3 { x: 10.0, y: 0.0, z: 0.5 },
+        Direction::Left => Vec3 { x: 10.0, y: 0.0, z: 0.5 },
+        Direction::Right => Vec3 { x: -10.0, y: 0.0, z: 0.5 },
     }
 }
 
@@ -150,7 +154,16 @@ fn spawn_snake_body(
         for (transform, segement) in snake_segment_query.iter() {
             if segement.segement_index == segement_count {
                 let offset = spawn_offset(segement.direction) + transform.translation;
-                spawn_snake_segment(&mut commands, &mut meshes, &mut materials, offset, segement.direction, segement_count + 1);
+                let segement_queue = segement.direction_queue.clone();
+                spawn_snake_segment(
+                    &mut commands, 
+                    &mut meshes, 
+                    &mut materials, 
+                    offset, 
+                    segement.direction, 
+                    segement_count + 1,
+                    segement_queue
+                );
                 snake_head.segement_count += 1;
             }
         }
@@ -161,9 +174,10 @@ fn spawn_snake_body(
 fn update_snake_component_direction(
     input: Res<ButtonInput<KeyCode>>,
     mut snake_head_query: Query<&mut SnakeSegment, With<SnakeHead>>,
-    snake_segment_query: Query<&mut SnakeSegment, Without<SnakeHead>>
+    mut snake_segment_query: Query<&mut SnakeSegment, Without<SnakeHead>>
 ){
    let new_direction = update_snake_head_direction(input, snake_head_query);
+   update_snake_non_head_direction(snake_segment_query, new_direction);
 }
 
 fn update_snake_head_direction(
@@ -195,4 +209,16 @@ fn update_snake_head_direction(
     
     (*snake_head).direction = new_direction;
     new_direction
+}
+
+fn update_snake_non_head_direction(
+    mut snake_segment_query: Query<&mut SnakeSegment, Without<SnakeHead>>,
+    new_direction: Direction
+
+) {
+    for mut snake_segment in &mut snake_segment_query {
+        snake_segment.direction_queue.push_back(new_direction);
+        let direction = snake_segment.direction_queue.pop_front();
+        snake_segment.direction = direction.expect("Direction");
+    }
 }
