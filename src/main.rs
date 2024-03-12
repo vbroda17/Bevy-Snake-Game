@@ -33,19 +33,23 @@ pub enum Direction {
 }
 
 // #[derive(Component)]
-struct Position {
-    x: f32,
-    y: f32,
+// struct Position {
+//     x: f32,
+//     y: f32,
+// }
+
+#[derive(Component)]
+struct SnakeHead {
+    segement_count: u32,
+
 }
 
 #[derive(Component)]
-struct SnakeHead;
-
-#[derive(Component)]
 struct SnakeSegment {
-    position: Position,
+    // position: Position,
     direction: Direction,
     direction_queue: VecDeque<Direction>,
+    segement_index: u32,
 }
 
 
@@ -77,11 +81,13 @@ fn spawn_snake_head(
             material: material_handle,
             ..default()
         },
-        SnakeHead ,
+        SnakeHead {
+            segement_count: 0,
+        },
         SnakeSegment {
             direction: Direction::Up,
-            position: Position { x: 0., y: 0. },
-            direction_queue: VecDeque::new()
+            direction_queue: VecDeque::new(),
+            segement_index: 0,
         },
     ));
 }
@@ -91,6 +97,7 @@ fn spawn_snake_segment(
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<ColorMaterial>>,
     location: Vec3,
+    new_index: u32
 )
 {
     let mesh = Mesh::from(Rectangle::new(10., 10.));
@@ -109,11 +116,10 @@ fn spawn_snake_segment(
             },
             ..default()
         },
-        SnakeHead ,
         SnakeSegment {
             direction: Direction::Up,
-            position: Position { x: 0., y: 0. },
-            direction_queue: VecDeque::new()
+            direction_queue: VecDeque::new(),
+            segement_index: new_index
         },
     ));
 }
@@ -132,14 +138,20 @@ fn spawn_snake_body(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     input: Res<ButtonInput<KeyCode>>,
-    query: Query<(&Transform, &SnakeSegment), With<SnakeSegment>>
+    query: Query<(&Transform, &SnakeSegment), With<SnakeSegment>>,
+    mut snake_head_query: Query<&mut SnakeHead>,
 ) {
     if input.just_pressed(KeyCode::Space) {
-        for (transform, segement) in &query {
-            // println!("Vector: {:?}", transform.translation);
-            let offset = spawn_offset(segement.direction) + transform.translation;
-            // println!("offset: {:?}", offset);
-            spawn_snake_segment(&mut commands, &mut meshes, &mut materials, offset);
+        if let Some(mut snake_head) = snake_head_query.iter_mut().next() {
+            let segement_count = snake_head.segement_count;
+
+            for (transform, segement) in query.iter() {
+                if segement.segement_index == segement_count {
+                    let offset = spawn_offset(segement.direction) + transform.translation;
+                    spawn_snake_segment(&mut commands, &mut meshes, &mut materials, offset, segement_count + 1);
+                    snake_head.segement_count += 1;
+                }
+            }
         }
     }
 }
