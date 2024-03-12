@@ -22,6 +22,7 @@ fn main() {
         .add_systems(Startup, setup)
         .add_systems(Update, spawn_snake_body)
         .add_systems(Update, update_snake_component_direction)
+        .add_systems(Update, move_snake)
         .run();
 }
 
@@ -220,5 +221,31 @@ fn update_snake_non_head_direction(
         snake_segment.direction_queue.push_back(new_direction);
         let direction = snake_segment.direction_queue.pop_front();
         snake_segment.direction = direction.expect("Direction");
+    }
+}
+
+fn move_snake(
+    time: Res<Time>,
+    mut snake_query: Query<(&mut SnakeSegment, &mut Transform)>
+){
+    for (mut segement, mut transform) in &mut snake_query {
+        match segement.direction {
+            Direction::Up => {
+                transform.translation.y += 100. * time.delta_seconds();
+                // println!("Going Up")
+            },
+            Direction::Down => {
+                transform.translation.y -= 100. * time.delta_seconds();
+                // println!("Going Down ")
+            },
+            Direction::Right => {
+                transform.translation.x += 100. * time.delta_seconds();
+                // println!("Going Right")
+            },
+            Direction::Left => {
+                transform.translation.x -= 100. * time.delta_seconds();
+                // println!("Going Left")
+            }
+        }
     }
 }
