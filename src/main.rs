@@ -238,7 +238,8 @@ fn move_snake(
 
     for (mut segment, mut transform) in &mut snake_query.iter_mut() {
         if segment.segement_index != 0 {
-            let new_translation = positions.pop_front();
+            let mut new_translation = positions.pop_front();
+            new_translation += spawn_offset(segment.direction);
             transform.translation = new_translation.clone().expect("Vec3");
         }
         else {
