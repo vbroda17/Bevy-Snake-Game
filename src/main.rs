@@ -22,7 +22,7 @@ fn main() {
         .add_systems(Startup, setup)
         .add_systems(Update, spawn_snake_body)
         .add_systems(Update, update_snake_component_direction)
-        .add_systems(Update, move_snake)
+        .add_systems(FixedUpdate, move_snake)
         .run();
 }
 
@@ -173,7 +173,7 @@ fn update_snake_component_direction(
     mut snake_segment_query: Query<&mut SnakeSegment, Without<SnakeHead>>
 ){
    let new_direction = update_snake_head_direction(input, snake_head_query);
-//    update_snake_non_head_direction(snake_segment_query, new_direction);
+   update_snake_non_head_direction(snake_segment_query, new_direction);
 }
 
 fn update_snake_head_direction(
@@ -208,11 +208,11 @@ fn update_snake_head_direction(
 }
 
 fn update_snake_non_head_direction(
-    mut snake_segment_query: Query<(&mut SnakeSegment, &mut Transform), Without<SnakeHead>>,
+    mut snake_segment_query: Query<&mut SnakeSegment, Without<SnakeHead>>,
     new_direction: Direction
 
 ) {
-    for (mut snake_segment, _) in &mut snake_segment_query {
+    for mut snake_segment in &mut snake_segment_query {
         snake_segment.direction_queue.push_back(new_direction);
         let direction = snake_segment.direction_queue.pop_front();
         snake_segment.direction = direction.expect("Direction");
@@ -236,7 +236,7 @@ fn move_snake(
     // mut snake_segment_query: Query<(&mut SnakeSegment, &mut Transform), Without<SnakeHead>>
     mut snake_query: Query<(&mut SnakeSegment, &mut Transform)>
 ){
-    let speed = 1.;
+    let speed = 500.;
     let mut positions: VecDeque<Vec3> = VecDeque::new();
     // let size = 
 
@@ -251,17 +251,26 @@ fn move_snake(
         if segment.segement_index != 0 {
             // let offset = move_offset(previous_direction, segment.segement_index as u32);
             let Some(mut new_translation) = positions.pop_front() else { todo!() };
-            let offset = (new_translation - transform.translation) * time.delta_seconds();
-            transform.translation += offset;
+            // let offset = (new_translation - transform.translation) * time.delta_seconds();
+            transform.translation = new_translation;
         }
-        else {
+        else if segment.segement_index == 1{
+
+        }
+        else if segment.segement_index == 0{
             let mut new_translation = transform.translation.clone();
             match segment.direction {
-                Direction::Up => new_translation.y += speed,
-                Direction::Down => new_translation.y -= speed,
-                Direction::Right => new_translation.x += speed,
-                Direction::Left => new_translation.x -= speed,
+                Direction::Up => new_translation.y += speed * time.delta_seconds(),
+                Direction::Down => new_translation.y -= speed * time.delta_seconds(),
+                Direction::Right => new_translation.x += speed * time.delta_seconds(),
+                Direction::Left => new_translation.x -= speed * time.delta_seconds(),
             }
+
+            // rounding this
+            new_translation.x = (new_translation.x / 10.0).round() * 10.0;
+            new_translation.y = (new_translation.y / 10.0).round() * 10.0;
+
+
             // new_head_translation = (spawn_offset(head_segment.direction) + new_head_translation) * time.delta_seconds();
             let window = window.single();
             let window_width = window.width();
