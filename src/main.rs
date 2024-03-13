@@ -219,6 +219,16 @@ fn update_snake_non_head_direction(
     }
 }
 
+fn move_offset(direction: Direction, index: u32) -> Vec3 {
+    match direction {
+        Direction::Up => Vec3 { x: 0.0, y: -10.0 * index as f32, z: 0.5 },
+        Direction::Down => Vec3 { x: 0.0, y: 10.0 * index as f32, z: 0.5 },
+        Direction::Left => Vec3 { x: 10.0 * index as f32, y: 0.0, z: 0.5 },
+        Direction::Right => Vec3 { x: -10.0 * index as f32, y: 0.0, z: 0.5 },
+    }
+}
+
+
 fn move_snake(
     time: Res<Time>,
     window: Query<&Window>,
@@ -226,7 +236,7 @@ fn move_snake(
     // mut snake_segment_query: Query<(&mut SnakeSegment, &mut Transform), Without<SnakeHead>>
     mut snake_query: Query<(&mut SnakeSegment, &mut Transform)>
 ){
-    let speed = 100.;
+    let speed = 1.;
     let mut positions: VecDeque<Vec3> = VecDeque::new();
     // let size = 
 
@@ -237,18 +247,20 @@ fn move_snake(
     // positions.pop_back();   // don't care about last ones position
 
     for (mut segment, mut transform) in &mut snake_query.iter_mut() {
+        let previous_direction = segment.direction;
         if segment.segement_index != 0 {
-            let mut new_translation = positions.pop_front();
-            new_translation += spawn_offset(segment.direction);
-            transform.translation = new_translation.clone().expect("Vec3");
+            // let offset = move_offset(previous_direction, segment.segement_index as u32);
+            let Some(mut new_translation) = positions.pop_front() else { todo!() };
+            let offset = (new_translation - transform.translation) * time.delta_seconds();
+            transform.translation += offset;
         }
         else {
             let mut new_translation = transform.translation.clone();
             match segment.direction {
-                Direction::Up => new_translation.y += speed * time.delta_seconds(),
-                Direction::Down => new_translation.y -= speed * time.delta_seconds(),
-                Direction::Right => new_translation.x += speed * time.delta_seconds(),
-                Direction::Left => new_translation.x -= speed * time.delta_seconds(),
+                Direction::Up => new_translation.y += speed,
+                Direction::Down => new_translation.y -= speed,
+                Direction::Right => new_translation.x += speed,
+                Direction::Left => new_translation.x -= speed,
             }
             // new_head_translation = (spawn_offset(head_segment.direction) + new_head_translation) * time.delta_seconds();
             let window = window.single();
