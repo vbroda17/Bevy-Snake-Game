@@ -31,7 +31,7 @@ pub enum Direction{
     Down,
     Left,
     Right,
-}
+}c
 
 #[derive(Component)]
 struct Position {
