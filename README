@@ -1,7 +1,5 @@
-Stoped workikng again. 
+Has all needed functionality.
 
-When coming back, need to fix the offset thing, or at least it spawning in the correct place initially
+Use WSDA to move, can hit space to spawn new snake segments.
 
-Also need to add spawning food and then calls the spawn function when food is hit.
-
-Also need lots of ofther various things to make it more snake game like.
+In the future might want to clean up the code a bit. As well additional features could be added, like adjustable speed, cleaner spawnings, and score display.
