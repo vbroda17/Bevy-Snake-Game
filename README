@@ -1,0 +1,7 @@
+Stoped workikng again. 
+
+When coming back, need to fix the offset thing, or at least it spawning in the correct place initially
+
+Also need to add spawning food and then calls the spawn function when food is hit.
+
+Also need lots of ofther various things to make it more snake game like.

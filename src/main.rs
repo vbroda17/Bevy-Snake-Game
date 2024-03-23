@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy::sprite::MaterialMesh2dBundle;
+use std::time::*;
 use std::collections::VecDeque;
 
 
@@ -20,8 +21,8 @@ fn main() {
                 .build(),
         )
         .add_systems(Startup, setup)
-        .add_systems(Update, spawn_snake_body)
-        .add_systems(Update, update_snake_component_direction)
+        .add_systems(Update, spawn_snake_body_test)
+        .add_systems(FixedUpdate, update_snake_component_direction)
         .add_systems(FixedUpdate, move_snake)
         .run();
 }
@@ -37,7 +38,6 @@ pub enum Direction {
 #[derive(Component)]
 struct SnakeHead {
     segement_count: u32,
-
 }
 
 #[derive(Component)]
@@ -48,6 +48,12 @@ struct SnakeSegment {
     segement_index: u32,
 }
 
+#[derive(Component)]    // probably should be a Resource but that would mean a bit of refactoring
+struct MoveTime {
+    // track when the snake should update positions
+    timer: Timer,
+}
+
 
 fn setup (
     mut commands: Commands,
@@ -55,6 +61,8 @@ fn setup (
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     commands.spawn(Camera2dBundle::default());
+    let movement_time = Duration::from_millis(500);
+    commands.spawn(MoveTime { timer: Timer::new(movement_time, TimerMode::Repeating) });
 
     spawn_snake_head(commands, meshes, materials);
 }
@@ -142,28 +150,38 @@ fn spawn_snake_body(
     snake_segment_query: Query<(&Transform, &SnakeSegment), With<SnakeSegment>>,
     mut snake_head_query: Query<&mut SnakeHead>,
 ) {
-    if input.just_pressed(KeyCode::Space) {
-        let mut snake_head = snake_head_query.single_mut();
-        let segement_count = snake_head.segement_count;
+    let mut snake_head = snake_head_query.single_mut();
+    let segement_count = snake_head.segement_count;
 
-        for (transform, segement) in snake_segment_query.iter() {
-            // println!("Segment index: {}", segement.segement_index); // test to prove it looks at them in order
-            if segement.segement_index == segement_count {
-                let offset = spawn_offset(segement.direction) + transform.translation;
-                let segement_queue = segement.direction_queue.clone();
-                spawn_snake_segment(
-                    &mut commands, 
-                    &mut meshes, 
-                    &mut materials, 
-                    offset, 
-                    segement.direction, 
-                    segement_count + 1,
-                    segement_queue
-                );
-                snake_head.segement_count += 1;
-            }
+    for (transform, segement) in snake_segment_query.iter() {
+        // println!("Segment index: {}", segement.segement_index); // test to prove it looks at them in order
+        if segement.segement_index == segement_count {
+            let offset = spawn_offset(segement.direction) + transform.translation;
+            let segement_queue = segement.direction_queue.clone();
+            spawn_snake_segment(
+                &mut commands, 
+                &mut meshes, 
+                &mut materials, 
+                offset, 
+                segement.direction, 
+                segement_count + 1,
+                segement_queue
+            );
+            snake_head.segement_count += 1;
         }
+    }
+}
 
+fn spawn_snake_body_test(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    input: Res<ButtonInput<KeyCode>>,
+    snake_segment_query: Query<(&Transform, &SnakeSegment), With<SnakeSegment>>,
+    mut snake_head_query: Query<&mut SnakeHead>,
+) {
+    if input.just_pressed(KeyCode::Space) {
+        spawn_snake_body(commands, meshes, materials, input, snake_segment_query, snake_head_query)
     }
 }
 
@@ -234,14 +252,20 @@ fn move_snake(
     window: Query<&Window>,
     // mut snake_head_query: Query<(&mut SnakeSegment, &mut Transform), With<SnakeHead>>,
     // mut snake_segment_query: Query<(&mut SnakeSegment, &mut Transform), Without<SnakeHead>>
-    mut snake_query: Query<(&mut SnakeSegment, &mut Transform)>
+    mut snake_query: Query<(&mut SnakeSegment, &mut Transform)>,
+    mut moveTime: Query<&mut MoveTime> 
 ){
+
+    let mut move_timer = moveTime.single_mut();
+    move_timer.timer.tick(time.delta());
+    if move_timer.timer.just_finished() {
+        println!("Moving");
+
     let speed = 500.;
     let mut positions: VecDeque<Vec3> = VecDeque::new();
-    // let size = 
 
     for (segement, transform) in &mut snake_query.iter_mut() {
-        println!("Segment index: {}", segement.segement_index); // test to prove it looks at them in order
+        // println!("Segment index: {}", segement.segement_index); // test to prove it looks at them in order
         positions.push_back(transform.translation.clone());
     }
     // positions.pop_back();   // don't care about last ones position
@@ -281,4 +305,6 @@ fn move_snake(
             transform.translation = new_translation;
         }
     }
+    }
+    
 }
