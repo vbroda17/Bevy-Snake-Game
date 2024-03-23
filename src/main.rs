@@ -22,6 +22,9 @@ fn main() {
         )
         .add_systems(Startup, setup)
         .add_systems(Update, spawn_snake_body_test)
+        .add_systems(FixedUpdate, spawn_food)
+        .add_systems(FixedUpdate, food_check)
+        .add_systems(FixedUpdate, spawn_snake_body_check)
         .add_systems(FixedUpdate, update_snake_component_direction)
         .add_systems(FixedUpdate, move_snake)
         .run();
@@ -61,7 +64,7 @@ fn setup (
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     commands.spawn(Camera2dBundle::default());
-    let movement_time = Duration::from_millis(500);
+    let movement_time = Duration::from_millis(100);
     commands.spawn(MoveTime { timer: Timer::new(movement_time, TimerMode::Repeating) });
 
     spawn_snake_head(commands, meshes, materials);
@@ -146,7 +149,7 @@ fn spawn_snake_body(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
-    input: Res<ButtonInput<KeyCode>>,
+    // input: Res<ButtonInput<KeyCode>>,
     snake_segment_query: Query<(&Transform, &SnakeSegment), With<SnakeSegment>>,
     mut snake_head_query: Query<&mut SnakeHead>,
 ) {
@@ -168,6 +171,7 @@ fn spawn_snake_body(
                 segement_queue
             );
             snake_head.segement_count += 1;
+            println!("New snake segment spawned: index {}, position {:?}", segement_count, offset);
         }
     }
 }
@@ -181,7 +185,20 @@ fn spawn_snake_body_test(
     mut snake_head_query: Query<&mut SnakeHead>,
 ) {
     if input.just_pressed(KeyCode::Space) {
-        spawn_snake_body(commands, meshes, materials, input, snake_segment_query, snake_head_query)
+        spawn_snake_body(commands, meshes, materials, snake_segment_query, snake_head_query)
+    }
+}
+
+fn spawn_snake_body_check(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    snake_segment_query: Query<(&Transform, &SnakeSegment), With<SnakeSegment>>,
+    mut snake_head_query: Query<&mut SnakeHead>,
+    food_transform_query: Query<&Transform, With<Food>>
+) {
+    if food_transform_query.iter().next().is_none() {
+        spawn_snake_body(commands, meshes, materials, snake_segment_query, snake_head_query)
     }
 }
 
@@ -259,7 +276,7 @@ fn move_snake(
     let mut move_timer = moveTime.single_mut();
     move_timer.timer.tick(time.delta());
     if move_timer.timer.just_finished() {
-        println!("Moving");
+        // println!("Moving");
 
     let speed = 500.;
     let mut positions: VecDeque<Vec3> = VecDeque::new();
@@ -307,4 +324,74 @@ fn move_snake(
     }
     }
     
+}
+
+#[derive(Component)]
+pub struct Food;
+
+// fn update_food(
+//     mut commands: Commands, 
+//     window: Query<&Window>,
+//     food_transform_query: Query<&Transform, With<Food>>,
+//     mut food_positions: Query<(Entity, &Transform), With<Food>>,
+//     mut snake_query: Query<(&mut SnakeSegment, &mut Transform)>
+// ){
+//     spawn_food(commands, window, food_transform_query);
+//     food_check(commands, food_positions, snake_segment_query);
+// }
+
+fn spawn_food(
+    mut commands: Commands, 
+    window: Query<&Window>,
+    food_transform_query: Query<&Transform, With<Food>>
+){
+    if !(food_transform_query.iter().next().is_none()) {
+        return;
+    }
+
+    let window = window.single();
+    let window_width = window.width();
+    let window_height = window.height();
+
+    let x = (rand::random::<f32>() - 0.5) * window_width;
+    let y = (rand::random::<f32>() - 0.5) * window_height;
+
+    let x = x.max(-window_width / 2. + 5.).min(window_width / 2. - 5.);
+    let y = y.max(-window_height / 2. + 5.).min(window_height / 2. - 5.);
+
+    commands.spawn((
+        SpriteBundle {
+            sprite: Sprite {
+                color: Color::rgb(0.8, 0.1, 0.0),
+                custom_size: Some(Vec2::new(10., 10.)),
+                ..default()
+            },
+            transform: Transform::from_translation(Vec3::new(x, y, 0.)),
+            ..default()
+        },
+        Food,
+    ));
+
+    println!("Food spawned at {}, {}", x, y);
+}
+
+fn food_check(
+    mut commands: Commands,
+    mut food_positions: Query<(Entity, &Transform), With<Food>>,
+    mut snake_query: Query<(&mut SnakeSegment, & Transform)>,
+){
+    for (mut segment, mut transform) in &mut snake_query.iter_mut(){
+        for (food_entity, food_transform) in &mut food_positions {
+            let distance = Vec2::new(
+                transform.translation.x - food_transform.translation.x,
+                transform.translation.y - food_transform.translation.y,
+            ).length();
+
+            let collision_distance = 10.;
+
+            if distance < collision_distance {
+                commands.entity(food_entity).despawn();
+            }
+        }
+    }
 }
