@@ -27,6 +27,7 @@ fn main() {
         .add_systems(FixedUpdate, spawn_snake_body_check)
         .add_systems(FixedUpdate, update_snake_component_direction)
         .add_systems(FixedUpdate, move_snake)
+        .add_systems(FixedUpdate, segment_check)
         .run();
 }
 
@@ -393,5 +394,38 @@ fn food_check(
                 commands.entity(food_entity).despawn();
             }
         }
+    }
+}
+
+fn segment_check(
+    mut commands: Commands,
+    mut snake_head_query: Query<(&Transform, &mut SnakeHead), With<SnakeHead>>,
+    snake_segment_query: Query<(&Transform, Entity,), (Without<SnakeHead>, With<SnakeSegment>)>,
+) {
+    // Get the transform of the snake head
+
+    let mut reset = false;
+    let (head_transform,  mut snake_head) = snake_head_query.single_mut();
+    for (segment_transform, _) in snake_segment_query.iter() {
+        // Calculate the distance between the head and segment
+        let distance = head_transform.translation.distance(segment_transform.translation);
+
+        let collision_distance = 10.0; // Adjust as needed
+
+        if distance < collision_distance {
+            // Collision detected, handle it here
+            println!("Collision detected between head and segment!");
+            reset = true;
+            break;
+        }
+    }
+
+    if reset {
+        for (_, segment_entity) in snake_segment_query.iter() {
+            commands.entity(segment_entity).despawn();
+        }
+        // snake_head.segement_index = 0;
+        snake_head.segement_count = 0;
+
     }
 }
