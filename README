@@ -3,3 +3,11 @@ Has all needed functionality.
 Use WSDA to move, can hit space to spawn new snake segments.
 
 In the future might want to clean up the code a bit. As well additional features could be added, like adjustable speed, cleaner spawnings, and score display.
+
+
+# Want new things
+Restructure code to be more modularized
+Add a menu for starting
+Add a screen after a loss to restart or exit
+Adda debug mode that is like how the game currently is
+Add a high score system with a name adding thing.
